@@ -1,0 +1,12 @@
+Nesse serviço, IA agêntica foi utilizada para:
+Receiver:
+- Formatação JSON
+- Respostas no JSON
+
+Docker:
+- Configuração básica do Docker
+
+Outras fontes:
+Google
+Stack overflow :D
+https://www.rabbitmq.com/tutorials/tutorial-one-go

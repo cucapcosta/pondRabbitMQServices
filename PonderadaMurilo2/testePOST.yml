@@ -1,0 +1,26 @@
+info:
+  name: testePOST
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: http://localhost:3420/add
+  body:
+    type: json
+    data: |-
+      {
+        "SensorID":"temp01",
+        "Timestamp":"2026-13-03:1300",
+        "Type":"Temperature",
+        "Unit":"C",
+        "IsDiscrete": false,
+        "Value": 32.2
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
