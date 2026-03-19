@@ -1,14 +1,14 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22 AS builder
 
 WORKDIR /app
 
-COPY go.mod ./
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN go build -o server .
+RUN CGO_ENABLED=0 go build -o server .
 
-FROM alpine:3.19
+FROM alpine:3.21
 
 WORKDIR /app
 COPY --from=builder /app/server .

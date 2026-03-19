@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -28,7 +31,11 @@ func failOnError(err error, msg string) {
 }
 func main() {
 	//Conexão servidor rabbitMQ
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	rabbitURL := os.Getenv("RABBITMQ_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@localhost:5672/"
+	}
+	conn, err := amqp.Dial(rabbitURL)
 	failOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 	//Conexão canal rabbitMQ
@@ -46,40 +53,56 @@ func main() {
 			amqp.QueueTypeArg: amqp.QueueTypeQuorum,
 		},
 	)
-	err = ch.PublishWithContext()
+	failOnError(err, "Fail to create Queue")
 	//Handle HTTP
-	http.HandleFunc("/add", addLog)
+	http.HandleFunc("/add", makeAddLog(ch, q.Name))
 	fmt.Println("Server listening on port 3420...")
 	if err := http.ListenAndServe(":3420", nil); err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }
-func addLog(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
+func makeAddLog(ch *amqp.Channel, queueName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			fmt.Errorf("Error during reading body: %v", err)
+			http.Error(w, "Error reading body", http.StatusBadRequest)
+			return
 		}
 		var data SensorData
 		if err := json.Unmarshal(body, &data); err != nil {
 			http.Error(w, "Invalid format", http.StatusBadRequest)
 			return
 		}
-		fmt.Println(data)
+
+		// Publica no RabbitMQ
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		err = ch.PublishWithContext(ctx,
+			"",
+			queueName,
+			false,
+			false,
+			amqp.Publishing{ContentType: "application/json", Body: body},
+		)
+		if err != nil {
+			http.Error(w, "Failed to publish to queue", http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("Enviado:", data)
+
 		w.Header().Set("Content-Type", "application/json")
-		responseData := struct {
+		json.NewEncoder(w).Encode(struct {
 			Status   string `json:"status"`
 			Message  string `json:"message"`
 			SensorID string `json:"sensor_id"`
 		}{
 			Status:   "success",
-			Message:  "Data received successfully",
+			Message:  "Data received and queued",
 			SensorID: data.SensorID,
-		}
-
-		// Encode and send the JSON response
-		if err := json.NewEncoder(w).Encode(responseData); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		})
 	}
 }

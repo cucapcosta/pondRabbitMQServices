@@ -10,7 +10,7 @@ http:
     type: json
     data: |-
       {
-        "SensorID":"temp01",
+        "SensorID":"2",
         "Timestamp":"2026-13-03:1300",
         "Type":"Temperature",
         "Unit":"C",
