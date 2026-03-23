@@ -75,8 +75,6 @@ services:
     environment:
       TARGET_URL: http://back:3420/add
       DATABASE_URL: postgres://admin:admin@postgres:5432/sensors?sslmode=disable
-      DURATION: "30s"
-      WORKERS: "10"
 
 volumes:
   rabbitmq_data:

@@ -1,16 +1,10 @@
-FROM golang:1.23 AS builder
+FROM grafana/k6:latest
 
-WORKDIR /app
+USER root
+RUN apk add --no-cache postgresql16-client bash jq
+USER k6
 
-COPY go.mod go.sum ./
-RUN GOPROXY=direct GONOSUMDB=* GONOSUMCHECK=* go mod download
+COPY loadtest.js /scripts/loadtest.js
+COPY entrypoint.sh /scripts/entrypoint.sh
 
-COPY . .
-RUN CGO_ENABLED=0 go build -o loadtest .
-
-FROM alpine:3.21
-
-WORKDIR /app
-COPY --from=builder /app/loadtest .
-
-CMD ["./loadtest"]
+ENTRYPOINT ["bash", "/scripts/entrypoint.sh"]
